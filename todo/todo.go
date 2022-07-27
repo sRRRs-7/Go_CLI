@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/alexeyco/simpletable"
 )
 
 type Todo struct {
@@ -153,9 +155,37 @@ func (t *Todos) update(i int, r io.Reader, args ...string) (string, error) {
 }
 
 func (t *Todos) print(filename string) {
-	for i, v := range *t {
-		fmt.Printf("%d - %s \n", i, v.Task)
+	table := simpletable.New()
+	table.Header = &simpletable.Header{
+		Cells:  []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Text: "#"},
+			{Align: simpletable.AlignCenter, Text: "Task"},
+			{Align: simpletable.AlignCenter, Text: "Done"},
+			{Align: simpletable.AlignCenter, Text: "Created_at"},
+			{Align: simpletable.AlignCenter, Text: "Completed_at"},
+			{Align: simpletable.AlignCenter, Text: "Updated_at"},
+		},
 	}
+
+	for i, v := range *t {
+		r := []*simpletable.Cell{
+			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%d", i)},
+			{Text: v.Task},
+			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%t", v.Done)},
+			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Created_at.Format("01-02-2006 15:04:05 Mon"))},
+			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Completed_at.Format("01-02-2006 15:04:05 Mon"))},
+			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Updated_at.Format("01-02-2006 15:04:05 Mon"))},
+		}
+		table.Body.Cells = append(table.Body.Cells, r)
+	}
+	table.Footer = &simpletable.Footer{
+		Cells: []*simpletable.Cell{
+			{}, {}, {}, {}, {}, {},
+		},
+	}
+
+	table.SetStyle(simpletable.StyleCompactLite)
+	fmt.Println(table.String())
 }
 
 func (t *Todos) store(filename string) error {
@@ -178,6 +208,9 @@ func (t *Todos) load(filename string) error {
 	return nil
 }
 
+// command
+// go run main.go -add task
+// echo "task" | ./main -add
 func (t *Todos) getInput(r io.Reader, args ...string) (string, error) {
 	if len(args) > 0 {
 		return strings.Join(args, " "), nil
@@ -194,3 +227,4 @@ func (t *Todos) getInput(r io.Reader, args ...string) (string, error) {
 	}
 	return text, nil
 }
+
