@@ -158,23 +158,23 @@ func (t *Todos) print(filename string) {
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells:  []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Text: "#"},
-			{Align: simpletable.AlignCenter, Text: "Task"},
-			{Align: simpletable.AlignCenter, Text: "Done"},
-			{Align: simpletable.AlignCenter, Text: "Created_at"},
-			{Align: simpletable.AlignCenter, Text: "Completed_at"},
-			{Align: simpletable.AlignCenter, Text: "Updated_at"},
+			{Align: simpletable.AlignCenter, Text: Gray("#")},
+			{Align: simpletable.AlignCenter, Text: Red("Task")},
+			{Align: simpletable.AlignCenter, Text: Blue("Done")},
+			{Align: simpletable.AlignCenter, Text: Green("Created_at")},
+			{Align: simpletable.AlignCenter, Text: Green("Completed_at")},
+			{Align: simpletable.AlignCenter, Text: Green("Updated_at")},
 		},
 	}
 
 	for i, v := range *t {
 		r := []*simpletable.Cell{
 			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%d", i)},
-			{Text: v.Task},
-			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%t", v.Done)},
-			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Created_at.Format("01-02-2006 15:04:05 Mon"))},
-			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Completed_at.Format("01-02-2006 15:04:05 Mon"))},
-			{Align: simpletable.AlignRight, Text: fmt.Sprint(v.Updated_at.Format("01-02-2006 15:04:05 Mon"))},
+			{Text: Red(v.Task)},
+			{Align: simpletable.AlignRight, Text: Blue(fmt.Sprintf("%t", v.Done))},
+			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Created_at.Format("01-02-2006 15:04:05 Mon")))},
+			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Completed_at.Format("01-02-2006 15:04:05 Mon")))},
+			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Updated_at.Format("01-02-2006 15:04:05 Mon")))},
 		}
 		table.Body.Cells = append(table.Body.Cells, r)
 	}
