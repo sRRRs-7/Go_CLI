@@ -167,20 +167,33 @@ func (t *Todos) print(filename string) {
 		},
 	}
 
+	var pending int
 	for i, v := range *t {
+		done := fmt.Sprintf("%t", v.Done)
+		if done == "true" {
+			done = Green("Yes")
+		} else {
+			done = Blue("No")
+			pending++
+		}
 		r := []*simpletable.Cell{
-			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%d", i)},
+			{Align: simpletable.AlignCenter, Text: fmt.Sprintf("%d", i)},
 			{Text: Red(v.Task)},
-			{Align: simpletable.AlignRight, Text: Blue(fmt.Sprintf("%t", v.Done))},
-			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Created_at.Format("01-02-2006 15:04:05 Mon")))},
-			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Completed_at.Format("01-02-2006 15:04:05 Mon")))},
-			{Align: simpletable.AlignRight, Text: Green(fmt.Sprint(v.Updated_at.Format("01-02-2006 15:04:05 Mon")))},
+			{Align: simpletable.AlignCenter, Text: done},
+			{Align: simpletable.AlignCenter, Text: Green(fmt.Sprint(v.Created_at.Format("01-02-2006 15:04:05 Mon")))},
+			{Align: simpletable.AlignCenter, Text: Green(fmt.Sprint(v.Completed_at.Format("01-02-2006 15:04:05 Mon")))},
+			{Align: simpletable.AlignCenter, Text: Green(fmt.Sprint(v.Updated_at.Format("01-02-2006 15:04:05 Mon")))},
 		}
 		table.Body.Cells = append(table.Body.Cells, r)
 	}
 	table.Footer = &simpletable.Footer{
 		Cells: []*simpletable.Cell{
-			{}, {}, {}, {}, {}, {},
+			{},
+			{},
+			{Align: simpletable.AlignCenter, Text: fmt.Sprintf("pending %d tasks", pending)},
+			{},
+			{},
+			{},
 		},
 	}
 
