@@ -1,20 +1,24 @@
 package todo
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 )
 
 type Todo struct {
-	Task string
-	Done bool
-	Created_at time.Time
-	Completed_at time.Time
+	Task 			string 		`json:"task"`
+	Done 			bool 		`json:"done"`
+	Created_at 		time.Time 	`json:"created_at"`
+	Completed_at 	time.Time 	`json:"completed_at"`
+	Updated_at 		time.Time 	`json:"updated_at"`
 }
 
 type Todos []Todo
@@ -25,6 +29,11 @@ const (
 
 func TodoMain() {
 	add := flag.Bool("add", false, "add a new todo")
+	complete := flag.Int("complete", 0, "mark a todo as completed")
+	del := flag.Int("del", 0, "delete a todo")
+	list := flag.Bool("list", false, "all list")
+	update := flag.Int("update", 0, "update a todo")
+
 	flag.Parse()
 
 	todos := &Todos{}
@@ -35,8 +44,48 @@ func TodoMain() {
 
 	switch {
 	case *add:
-		todos.add("sample todo")
-		err := todos.store(todoFile)
+		task, err := todos.getInput(os.Stdin, flag.Args()...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		todos.add(task)
+		err = todos.store(todoFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	case *complete > 0:
+		err := todos.complete(*complete)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		err = todos.store(todoFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	case *del > 0:
+		err := todos.delete(*del)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		err = todos.store(todoFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	case *list:
+		todos.print(todoFile)
+	case *update > 0:
+		_, err := todos.update(*update, os.Stdin, flag.Args()...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		err = todos.store(todoFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
@@ -53,20 +102,18 @@ func (t *Todos) add(task string) {
 		Done: false,
 		Created_at: time.Now(),
 		Completed_at: time.Time{},
+		Updated_at: time.Time{},
 	}
-
 	*t = append(*t, todo)
 }
 
 func (t *Todos) complete(i int) error {
 	todo := *t
-	if i <= 0 || i >= len(todo) {
+	if i <= 0 || i > len(todo) {
 		return errors.New("invalid index")
 	}
-
-	todo[i].Done = true
+	todo[i-1].Done = true
 	todo[i-1].Completed_at = time.Now()
-
 	return nil
 }
 
@@ -76,43 +123,39 @@ func (t *Todos) delete(i int) error {
 		return errors.New("invalid index")
 	}
 	*t = append(todo[:i-1], todo[i:]...)
-
 	return nil
 }
 
-func (t *Todos) update(v string, i int) error {
+func (t *Todos) update(i int, r io.Reader, args ...string) (string, error) {
 	todo := *t
-	if i <= 0 || i >= len(todo) {
-		return errors.New("invalid index")
+	if i <= 0 || i > len(todo) {
+		return "", errors.New("invalid index")
 	}
-	todo[i-1] = Todo{
-		Task: v,
-		Done: false,
-		Created_at: time.Now(),
-		Completed_at: time.Time{},
+	if len(args) > 0 {
+		return strings.Join(args, " "), nil
 	}
+	fmt.Print("Enter task: ")
+	scanner := bufio.NewScanner(r)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	text := scanner.Text()
+	if len(text) == 0 {
+		return "", errors.New("empty input is not allowed")
+	}
+	todo[i-1].Task = text
+	todo[i-1].Done = true
+	todo[i-1].Completed_at = time.Time{}
+	todo[i-1].Updated_at = time.Now()
 
-	return nil
+	return text, nil
 }
 
-func (t *Todos) load(filename string) error {
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return err
+func (t *Todos) print(filename string) {
+	for i, v := range *t {
+		fmt.Printf("%d - %s \n", i, v.Task)
 	}
-
-	if len(file) == 0 {
-		return err
-	}
-	err = json.Unmarshal(file, t)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (t *Todos) store(filename string) error {
@@ -120,6 +163,34 @@ func (t *Todos) store(filename string) error {
 	if err != nil {
 		return err
 	}
-
 	return ioutil.WriteFile(filename, data, 0644)
+}
+
+func (t *Todos) load(filename string) error {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(data, t)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Todos) getInput(r io.Reader, args ...string) (string, error) {
+	if len(args) > 0 {
+		return strings.Join(args, " "), nil
+	}
+	fmt.Print("Enter task: ")
+	scanner := bufio.NewScanner(r)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	text := scanner.Text()
+	if len(text) == 0 {
+		return "", errors.New("empty input is not allowed")
+	}
+	return text, nil
 }
